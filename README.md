@@ -6,7 +6,7 @@ A light-theme, sidebar-navigation UI for the hackathon judging platform, built w
 
 - **Light app background** (`app`) with white cards (`card`), a single **blue primary** brand color, and a dark navy **sidebar** used consistently across all three portals.
 - **Semantic status pills** : green (`success`) for complete/active, amber (`warning`) for in progress, red (`danger`) for not submitted/errors, plus a neutral gray and a primary-tinted "new" pill.
-- **Space Grotesk** for headings/labels, **Inter** for body text — same pairing as before.
+- **Space Grotesk** for headings/labels, **Inter** for body text :same pairing as before.
 - Shared building blocks live in `src/components/shared/`: `Sidebar`, `TopHeader`, `StatusPill`, `CircularProgress` (workload/completion rings), `CountdownBoxes` (boxed HH:MM:SS), and `BarRow` (horizontal bar for score visualizations).
 
 ## Sign in
