@@ -9,10 +9,6 @@ A light-theme, sidebar-navigation UI for the hackathon judging platform, built w
 - **Space Grotesk** for headings/labels, **Inter** for body text :same pairing as before.
 - Shared building blocks live in `src/components/shared/`: `Sidebar`, `TopHeader`, `StatusPill`, `CircularProgress` (workload/completion rings), `CountdownBoxes` (boxed HH:MM:SS), and `BarRow` (horizontal bar for score visualizations).
 
-## Sign in
-
-One screen: a dark hero panel (brand + tagline) beside a light form (email, password, remember me / forgot password), with a row of role pills — Student, Judge, Organiser — at the bottom to pick which portal to land in. This is a front-end shell: submitting always "succeeds" after a short delay and routes to the matching portal; wire it up to a real auth endpoint before shipping.
-
 ## Student / Team portal (`/team`)
 
 Sidebar: Dashboard, My Projects, Leaderboard, Announcements, Notifications, Profile.
