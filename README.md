@@ -1,4 +1,4 @@
-# HackJudge — Hackathon Judging Platform
+# HackJudge: Hackathon Judging Platform
 
 A light-theme, sidebar-navigation UI for the hackathon judging platform, built with React + Vite + Tailwind CSS.
 
@@ -85,12 +85,3 @@ src/
   index.css                 ← Tailwind + font imports
 tailwind.config.js           ← light-theme tokens (app/card/sidebar/primary/status colors)
 ```
-
-## Next steps
-
-- Connect `AuthPage`'s submit handler to a real login API, and persist the session (token + role) instead of passing state through the router as this demo does.
-- Wire file uploads (Submission wizard, judge Project Preview) to real storage.
-- Replace mock data in `JudgeLayout` and `OrganiserLayout` with real fetches; connect every mutator to your backend. Score locking and organiser overrides need to be enforced server-side.
-- Track real per-criterion scores (not just a total) if you want the Results "By Criterion" and "Visualisations" tabs to be exact rather than estimated.
-- Add route guards so `/judge/*`, `/team/*`, `/organiser/*` check the signed-in role before rendering.
-- If you want the judging deadline organisers set in Setup to drive the countdown shown elsewhere, lift it into shared state instead of each portal computing its own.
