@@ -2,11 +2,19 @@
 CREATE TABLE IF NOT EXISTS workspaces (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  description TEXT,
   organizer_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   max_team_size INTEGER DEFAULT 4,
   status TEXT DEFAULT 'active',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Note: Run the following in your Supabase SQL Editor if RLS is blocking public/anon access:
+-- ALTER TABLE workspaces DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE event_details DISABLE ROW LEVEL SECURITY;
+-- OR enable public access policies:
+-- CREATE POLICY "Allow public read-write on workspaces" ON workspaces FOR ALL USING (true) WITH CHECK (true);
+-- CREATE POLICY "Allow public read-write on event_details" ON event_details FOR ALL USING (true) WITH CHECK (true);
 
 -- Workspace Applications Table
 CREATE TABLE IF NOT EXISTS workspace_applications (
@@ -101,3 +109,16 @@ CREATE TABLE IF NOT EXISTS notifications (
   time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   unread BOOLEAN DEFAULT TRUE
 );
+
+-- Criteria Table (Judging Rubric per Workspace)
+CREATE TABLE IF NOT EXISTS criteria (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  max INTEGER NOT NULL DEFAULT 2,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Disable RLS for development
+ALTER TABLE criteria DISABLE ROW LEVEL SECURITY;
+

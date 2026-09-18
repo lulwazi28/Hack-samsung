@@ -510,106 +510,354 @@ function JudgesTab({ teams, judges, assignments, addJudge, removeJudge, assignJu
   );
 }
 
-function CriteriaTab() {
+function CriteriaTab({ criteria = [], addCriteria, updateCriteria, removeCriteria }) {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingCriteria, setEditingCriteria] = useState(null);
+  const [deletingCriteria, setDeletingCriteria] = useState(null);
+
+  const [label, setLabel] = useState('');
+  const [maxPts, setMaxPts] = useState(2);
+
+  const totalPts = criteria.reduce((sum, c) => sum + Number(c.max || 0), 0);
+
+  const handleOpenAdd = () => {
+    setLabel('');
+    setMaxPts(2);
+    setShowAddModal(true);
+  };
+
+  const handleOpenEdit = (c) => {
+    setEditingCriteria(c);
+    setLabel(c.label);
+    setMaxPts(c.max);
+  };
+
+  const handleSaveAdd = async (e) => {
+    e.preventDefault();
+    if (!label.trim()) return;
+    await addCriteria(label.trim(), maxPts);
+    setShowAddModal(false);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingCriteria || !label.trim()) return;
+    await updateCriteria(editingCriteria.id, label.trim(), maxPts);
+    setEditingCriteria(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCriteria) return;
+    await removeCriteria(deletingCriteria.id, deletingCriteria.label);
+    setDeletingCriteria(null);
+  };
+
   return (
-    <div>
-      <h2 className="font-display font-semibold mb-1">Judging Criteria</h2>
-      <p className="text-sm text-muted mb-4">Identical for every judge. Locked during the competition to keep scoring fair.</p>
-      <div className="border border-border rounded-xl px-5">
-        <ul className="divide-y divide-border">
-          {RUBRIC.map((c) => (
-            <li key={c.id} className="flex items-center justify-between py-3 text-sm">
-              <span>{c.label}</span>
-              <span className="text-muted tabular-nums">{c.max} pt{c.max > 1 ? 's' : ''}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="flex items-center justify-between text-sm py-3 border-t border-border">
-          <span className="font-display font-semibold">Total</span>
-          <span className="font-display font-semibold tabular-nums">{RUBRIC_TOTAL} pts</span>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display font-semibold text-lg text-ink">Judging Criteria & Rubric</h2>
+          <p className="text-xs text-muted">Customize criteria and max points for judge evaluation.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenAdd}
+          className="bg-primary text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-all flex items-center gap-1"
+        >
+          + Add Criterion
+        </button>
+      </div>
+
+      <div className="border border-border rounded-xl px-5 bg-card">
+        {criteria.length === 0 ? (
+          <p className="text-xs text-muted py-6 text-center">No criteria added yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {criteria.map((c) => (
+              <li key={c.id} className="flex items-center justify-between py-3 text-sm">
+                <span className="font-medium text-ink">{c.label}</span>
+                <div className="flex items-center gap-4">
+                  <span className="text-muted tabular-nums text-xs bg-app px-2.5 py-1 rounded-md border border-border">
+                    {c.max} pt{c.max > 1 ? 's' : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(c)}
+                    className="text-muted hover:text-primary text-xs font-medium"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeletingCriteria(c)}
+                    className="text-muted hover:text-danger text-xs font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex items-center justify-between text-sm py-3.5 border-t border-border mt-1">
+          <span className="font-display font-semibold text-ink">Total Max Score</span>
+          <span className="font-display font-semibold tabular-nums text-primary text-base">{totalPts} pts</span>
         </div>
       </div>
+
+      {/* Add / Edit Modal */}
+      {(showAddModal || editingCriteria) && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <h3 className="font-display font-semibold text-lg text-ink">
+              {editingCriteria ? 'Edit Criterion' : 'Add New Judging Criterion'}
+            </h3>
+            <form onSubmit={editingCriteria ? handleSaveEdit : handleSaveAdd} className="space-y-4">
+              <div>
+                <label className="block text-xs text-muted mb-1 font-medium">Criterion Label</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Technical Implementation"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  className="w-full bg-white border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1 font-medium">Max Points</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  required
+                  value={maxPts}
+                  onChange={(e) => setMaxPts(parseInt(e.target.value) || 1)}
+                  className="w-full bg-white border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowAddModal(false); setEditingCriteria(null); }}
+                  className="px-4 py-2 text-xs font-medium text-muted hover:text-ink"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-primary text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-primary/90"
+                >
+                  {editingCriteria ? 'Save Changes' : 'Create Criterion'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingCriteria && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
+            <h3 className="font-display font-semibold text-base text-ink">Delete Criterion?</h3>
+            <p className="text-xs text-muted">Are you sure you want to remove "{deletingCriteria.label}"?</p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingCriteria(null)}
+                className="px-4 py-2 text-xs font-medium text-muted hover:text-ink"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="bg-danger text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-danger/90"
+              >
+                Delete Criterion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function DeadlinesTab({ eventDetails, updateEventDetails }) {
+  const [formState, setFormState] = useState({
+    eventName: eventDetails.eventName || '',
+    roundLabel: eventDetails.roundLabel || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  useEffect(() => {
+    setFormState({
+      eventName: eventDetails.eventName || '',
+      roundLabel: eventDetails.roundLabel || '',
+    });
+  }, [eventDetails]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await updateEventDetails(formState);
+      setFeedback({ type: 'success', text: 'Event & Deadlines updated successfully in Cloud DB!' });
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Error saving changes to database.' });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setFeedback(null), 4000);
+    }
+  };
+
   return (
-    <div className="max-w-md">
-      <h2 className="font-display font-semibold mb-1">Event & Deadlines</h2>
-      <p className="text-sm text-muted mb-4">Basic event details shown across every portal.</p>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-xs text-muted mb-1.5">Event name</label>
-          <input
-            type="text"
-            value={eventDetails.eventName}
-            onChange={(e) => updateEventDetails({ eventName: e.target.value })}
-            className="w-full bg-white border border-border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-muted mb-1.5">Current round</label>
-          <input
-            type="text"
-            value={eventDetails.roundLabel}
-            onChange={(e) => updateEventDetails({ roundLabel: e.target.value })}
-            className="w-full bg-white border border-border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-        <p className="text-xs text-muted">
-          Connecting a real judging deadline to the live countdown shown across the app needs a backend clock — it isn't wired up in this demo.
-        </p>
+    <form onSubmit={handleSave} className="max-w-md space-y-4">
+      <div>
+        <h2 className="font-display font-semibold text-lg text-ink mb-1">Event & Deadlines</h2>
+        <p className="text-xs text-muted mb-4">Basic event details shown across every portal.</p>
       </div>
-    </div>
+
+      {feedback && (
+        <div className={`p-3 rounded-lg text-xs font-medium ${feedback.type === 'success' ? 'bg-successlight text-success border border-success/30' : 'bg-dangerlight text-danger border border-danger/30'}`}>
+          {feedback.text}
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs text-muted mb-1.5 font-medium">Event Name</label>
+        <input
+          type="text"
+          value={formState.eventName}
+          onChange={(e) => setFormState(prev => ({ ...prev, eventName: e.target.value }))}
+          className="w-full bg-white border border-border rounded-lg px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs text-muted mb-1.5 font-medium font-medium">Current Round Label</label>
+        <input
+          type="text"
+          value={formState.roundLabel}
+          onChange={(e) => setFormState(prev => ({ ...prev, roundLabel: e.target.value }))}
+          className="w-full bg-white border border-border rounded-lg px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </div>
+
+      <div className="pt-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="bg-primary text-white font-semibold text-xs px-5 py-2.5 rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
+        >
+          {saving ? 'Saving Changes...' : 'Save Changes'}
+        </button>
+      </div>
+    </form>
   );
 }
 
 function SettingsTab({ eventDetails, updateEventDetails }) {
+  const [formState, setFormState] = useState({
+    late_submissions: eventDetails.late_submissions || false,
+    public_leaderboard: eventDetails.public_leaderboard !== false,
+    max_team_size: eventDetails.max_team_size || 4,
+  });
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  useEffect(() => {
+    setFormState({
+      late_submissions: eventDetails.late_submissions || false,
+      public_leaderboard: eventDetails.public_leaderboard !== false,
+      max_team_size: eventDetails.max_team_size || 4,
+    });
+  }, [eventDetails]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await updateEventDetails(formState);
+      setFeedback({ type: 'success', text: 'Workspace Settings updated successfully in Cloud DB!' });
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Error saving settings.' });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setFeedback(null), 4000);
+    }
+  };
+
   return (
-    <div className="max-w-md space-y-4">
-      <h2 className="font-display font-semibold mb-1">Settings</h2>
-      <label className="flex items-center justify-between border border-border rounded-md px-4 py-3 text-sm cursor-pointer">
-        Allow late submissions
+    <form onSubmit={handleSave} className="max-w-md space-y-4">
+      <div>
+        <h2 className="font-display font-semibold text-lg text-ink mb-1">Workspace Rules & Settings</h2>
+        <p className="text-xs text-muted mb-4">Configure submission rules and team constraints.</p>
+      </div>
+
+      {feedback && (
+        <div className={`p-3 rounded-lg text-xs font-medium ${feedback.type === 'success' ? 'bg-successlight text-success border border-success/30' : 'bg-dangerlight text-danger border border-danger/30'}`}>
+          {feedback.text}
+        </div>
+      )}
+
+      <label className="flex items-center justify-between border border-border rounded-xl px-4 py-3 text-sm bg-card cursor-pointer hover:border-primary/40 transition-colors">
+        <span className="font-medium text-ink">Allow late submissions</span>
         <input
           type="checkbox"
-          checked={eventDetails.late_submissions || false}
-          onChange={(e) => updateEventDetails({ late_submissions: e.target.checked })}
-          className="rounded border-border text-primary focus:ring-primary/30"
+          checked={formState.late_submissions}
+          onChange={(e) => setFormState(prev => ({ ...prev, late_submissions: e.target.checked }))}
+          className="rounded border-border text-primary focus:ring-primary/30 h-4 w-4"
         />
       </label>
-      <label className="flex items-center justify-between border border-border rounded-md px-4 py-3 text-sm cursor-pointer">
-        Show public leaderboard
+
+      <label className="flex items-center justify-between border border-border rounded-xl px-4 py-3 text-sm bg-card cursor-pointer hover:border-primary/40 transition-colors">
+        <span className="font-medium text-ink">Show public leaderboard</span>
         <input
           type="checkbox"
-          checked={eventDetails.public_leaderboard !== false}
-          onChange={(e) => updateEventDetails({ public_leaderboard: e.target.checked })}
-          className="rounded border-border text-primary focus:ring-primary/30"
+          checked={formState.public_leaderboard}
+          onChange={(e) => setFormState(prev => ({ ...prev, public_leaderboard: e.target.checked }))}
+          className="rounded border-border text-primary focus:ring-primary/30 h-4 w-4"
         />
       </label>
-      <div className="border border-border rounded-md px-4 py-3">
-        <label className="flex items-center justify-between text-sm mb-2">
+
+      <div className="border border-border rounded-xl px-4 py-3 bg-card">
+        <label className="flex items-center justify-between text-sm mb-1 font-medium text-ink">
           Max Team Members
           <input
             type="number"
-            value={eventDetails.max_team_size || 4}
+            value={formState.max_team_size}
             min={1}
             max={10}
-            onChange={(e) => updateEventDetails({ max_team_size: parseInt(e.target.value) || 4 })}
-            className="w-16 bg-white border border-border rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            onChange={(e) => setFormState(prev => ({ ...prev, max_team_size: parseInt(e.target.value) || 4 }))}
+            className="w-16 bg-white border border-border rounded-lg px-2.5 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/30"
           />
         </label>
         <p className="text-xs text-muted">Maximum number of students allowed per team in this workspace.</p>
       </div>
-    </div>
+
+      <div className="pt-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="bg-primary text-white font-semibold text-xs px-5 py-2.5 rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
+        >
+          {saving ? 'Saving Settings...' : 'Save Changes'}
+        </button>
+      </div>
+    </form>
   );
 }
 
 export default function Setup() {
   const {
-    teams, judges, assignments, eventDetails,
+    teams, judges, assignments, criteria, eventDetails,
     addTeam, removeTeam, addJudge, removeJudge,
-    assignJudgeToTeam, unassignJudgeFromTeam, autoAssignJudges, updateEventDetails,
+    assignJudgeToTeam, unassignJudgeFromTeam, autoAssignJudges,
+    addCriteria, updateCriteria, removeCriteria, updateEventDetails,
   } = useOutletContext();
   const [tab, setTab] = useState('Applications');
 
@@ -646,7 +894,14 @@ export default function Setup() {
             autoAssignJudges={autoAssignJudges}
           />
         )}
-        {tab === 'Criteria' && <CriteriaTab />}
+        {tab === 'Criteria' && (
+          <CriteriaTab
+            criteria={criteria}
+            addCriteria={addCriteria}
+            updateCriteria={updateCriteria}
+            removeCriteria={removeCriteria}
+          />
+        )}
         {tab === 'Deadlines' && <DeadlinesTab eventDetails={eventDetails} updateEventDetails={updateEventDetails} />}
         {tab === 'Settings' && <SettingsTab eventDetails={eventDetails} updateEventDetails={updateEventDetails} />}
       </div>

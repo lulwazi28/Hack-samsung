@@ -65,14 +65,16 @@ export default function AuthPage() {
     } else if (role.id === 'judge') {
       try {
         const cleanEmail = email.trim();
-        const { data: judgeData, error: judgeError } = await supabase
+        const { data: judgeList, error: judgeError } = await supabase
           .from('judges')
           .select('*')
-          .eq('email', cleanEmail)
-          .single();
+          .ilike('email', cleanEmail)
+          .limit(1);
+
+        const judgeData = judgeList && judgeList.length > 0 ? judgeList[0] : null;
 
         if (judgeError || !judgeData) {
-          throw new Error('Judge account not found. Please check your email.');
+          throw new Error('Judge account not found. Please check your email or verify judge creation in setup.');
         }
 
         if (judgeData.password && judgeData.password !== password) {

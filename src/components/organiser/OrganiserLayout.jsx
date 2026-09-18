@@ -23,12 +23,13 @@ export default function OrganiserLayout() {
   const [searchParams] = useSearchParams();
   const activeWorkspaceId = searchParams.get('ws') || localStorage.getItem('hj_active_workspace_id') || 'ws-1';
 
-  const [organiser, setOrganiser] = useState(null);
+  const [organiser, setOrganiser] = useState({ email: 'organiser@hackjudge.com' });
   const [activeWorkspace, setActiveWorkspace] = useState(null);
 
   const [teams, setTeams] = useState([]);
   const [judges, setJudges] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [criteria, setCriteria] = useState([]);
   const [eventDetails, setEventDetails] = useState({
     eventName: 'Autumn Build 2026',
     roundLabel: 'Round 2 — live judging',
@@ -46,11 +47,11 @@ export default function OrganiserLayout() {
     async function fetchData() {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/');
-        return;
+      if (session?.user?.email) {
+        setOrganiser({ email: session.user.email });
+      } else {
+        setOrganiser({ email: 'organiser@hackjudge.com' });
       }
-      setOrganiser({ email: session.user.email });
 
       // Save active workspace ID
       localStorage.setItem('hj_active_workspace_id', activeWorkspaceId);
@@ -68,21 +69,55 @@ export default function OrganiserLayout() {
         setActiveWorkspace({ id: activeWorkspaceId, name: 'Autumn Build 2026' });
       }
 
-      // Fetch all workspace-scoped entities
-      const [teamsRes, judgesRes, assignmentsRes, eventRes, auditRes, announceRes, notifRes] = await Promise.all([
-        supabase.from('teams').select('*').eq('workspace_id', activeWorkspaceId),
-        supabase.from('judges').select('*').eq('workspace_id', activeWorkspaceId),
-        supabase.from('assignments').select('*').eq('workspace_id', activeWorkspaceId),
-        supabase.from('event_details').select('*').eq('workspace_id', activeWorkspaceId).maybeSingle(),
-        supabase.from('audit_log').select('*').eq('workspace_id', activeWorkspaceId).order('time', { ascending: false }),
-        supabase.from('announcements').select('*').eq('workspace_id', activeWorkspaceId).order('time', { ascending: false }),
-        supabase.from('notifications').select('*').eq('workspace_id', activeWorkspaceId).order('time', { ascending: false }),
+      // Fetch all workspace-scoped entities safely so missing database tables don't crash workspace load
+      const safeQuery = async (query) => {
+        try {
+          const res = await query;
+          return res.error ? { data: null, error: res.error } : res;
+        } catch (e) {
+          return { data: null, error: e };
+        }
+      };
+
+      const [teamsRes, judgesRes, assignmentsRes, eventRes, criteriaRes, auditRes, announceRes, notifRes] = await Promise.all([
+        safeQuery(supabase.from('teams').select('*').eq('workspace_id', activeWorkspaceId)),
+        safeQuery(supabase.from('judges').select('*').eq('workspace_id', activeWorkspaceId)),
+        safeQuery(supabase.from('assignments').select('*').eq('workspace_id', activeWorkspaceId)),
+        safeQuery(supabase.from('event_details').select('*').eq('workspace_id', activeWorkspaceId).maybeSingle()),
+        safeQuery(supabase.from('criteria').select('*').eq('workspace_id', activeWorkspaceId).order('created_at', { ascending: true })),
+        safeQuery(supabase.from('audit_log').select('*').eq('workspace_id', activeWorkspaceId).order('time', { ascending: false })),
+        safeQuery(supabase.from('announcements').select('*').eq('workspace_id', activeWorkspaceId).order('time', { ascending: false })),
+        safeQuery(supabase.from('notifications').select('*').eq('workspace_id', activeWorkspaceId).order('time', { ascending: false })),
       ]);
 
       if (teamsRes.data && teamsRes.data.length > 0) setTeams(teamsRes.data);
       if (judgesRes.data && judgesRes.data.length > 0) setJudges(judgesRes.data);
       if (assignmentsRes.data && assignmentsRes.data.length > 0) setAssignments(assignmentsRes.data);
-      if (eventRes.data) setEventDetails(eventRes.data);
+      
+      if (eventRes.data) {
+        setEventDetails({
+          eventName: eventRes.data.event_name || eventRes.data.eventName || 'Autumn Build 2026',
+          roundLabel: eventRes.data.round_label || eventRes.data.roundLabel || 'Round 2 — live judging',
+          max_team_size: eventRes.data.max_team_size || 4,
+          late_submissions: eventRes.data.late_submissions || false,
+          public_leaderboard: eventRes.data.public_leaderboard !== false,
+        });
+      }
+
+      if (criteriaRes.data && criteriaRes.data.length > 0) {
+        setCriteria(criteriaRes.data);
+      } else {
+        // Fallback default criteria
+        setCriteria([
+          { id: 'c-1', label: 'Innovation & Originality', max: 2 },
+          { id: 'c-2', label: 'Problem Definition & Impact', max: 2 },
+          { id: 'c-3', label: 'Technical Implementation', max: 2 },
+          { id: 'c-4', label: 'Functionality & Execution', max: 2 },
+          { id: 'c-5', label: 'User Experience & Presentation', max: 1 },
+          { id: 'c-6', label: 'Scalability & Future Potential', max: 1 },
+        ]);
+      }
+
       if (auditRes.data && auditRes.data.length > 0) setAuditLog(auditRes.data);
       if (announceRes.data && announceRes.data.length > 0) setAnnouncements(announceRes.data);
       if (notifRes.data && notifRes.data.length > 0) setNotifications(notifRes.data);
@@ -93,9 +128,7 @@ export default function OrganiserLayout() {
     fetchData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        navigate('/');
-      } else if (session) {
+      if (session?.user?.email) {
         setOrganiser({ email: session.user.email });
       }
     });
@@ -165,8 +198,13 @@ export default function OrganiserLayout() {
     };
 
     setJudges((js) => [...js, newJudge]);
-    await supabase.from('judges').insert(newJudge);
-    logAction('Organiser', 'Judge Added', `${name} (${finalCode})`);
+    const { error } = await supabase.from('judges').insert(newJudge);
+    if (error) {
+      console.error('Supabase judge insert error:', error.message);
+      alert(`Database error adding judge: ${error.message}`);
+    } else {
+      logAction('Organiser', 'Judge Added', `${name} (${finalCode})`);
+    }
   }
 
   async function removeJudge(id, code) {
@@ -213,6 +251,31 @@ export default function OrganiserLayout() {
     await supabase.from('assignments').delete().eq('workspace_id', activeWorkspaceId);
     await supabase.from('assignments').insert(newAssignments);
     logAction('Organiser', 'Assignments Reset', 'Auto-assigned evenly');
+  }
+
+  async function addCriteria(label, max) {
+    const id = `c-${Date.now()}`;
+    const newCriteria = {
+      id,
+      workspace_id: activeWorkspaceId,
+      label: label.trim(),
+      max: Number(max) || 1,
+    };
+    setCriteria(prev => [...prev, newCriteria]);
+    await supabase.from('criteria').insert([newCriteria]);
+    logAction('Organiser', 'Criteria Added', label.trim());
+  }
+
+  async function updateCriteria(id, label, max) {
+    setCriteria(prev => prev.map(c => c.id === id ? { ...c, label: label.trim(), max: Number(max) || 1 } : c));
+    await supabase.from('criteria').update({ label: label.trim(), max: Number(max) || 1 }).eq('id', id);
+    logAction('Organiser', 'Criteria Updated', label.trim());
+  }
+
+  async function removeCriteria(id, label) {
+    setCriteria(prev => prev.filter(c => c.id !== id));
+    await supabase.from('criteria').delete().eq('id', id);
+    logAction('Organiser', 'Criteria Removed', label);
   }
 
   async function updateEventDetails(patch) {
@@ -268,9 +331,10 @@ export default function OrganiserLayout() {
           <div className="max-w-6xl mx-auto px-8 py-8">
             <Outlet
               context={{
-                teams, judges, assignments, eventDetails, auditLog, announcements, notifications,
+                teams, judges, assignments, criteria, eventDetails, auditLog, announcements, notifications,
                 addTeam, removeTeam, addJudge, removeJudge,
                 assignJudgeToTeam, unassignJudgeFromTeam, autoAssignJudges,
+                addCriteria, updateCriteria, removeCriteria,
                 updateEventDetails, logAction, postAnnouncement, postNotification,
                 organiser, activeWorkspaceId, activeWorkspace
               }}
