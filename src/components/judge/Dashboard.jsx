@@ -2,6 +2,7 @@ import { Link, useOutletContext } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import CircularProgress from '../shared/CircularProgress.jsx';
 import StatusPill from '../shared/StatusPill.jsx';
+import { RUBRIC, RUBRIC_TOTAL } from '../../data/rubric.js';
 
 export default function Dashboard() {
   const { judge, teams } = useOutletContext();
@@ -34,12 +35,39 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="bg-card border border-border rounded-xl p-5 mb-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className="font-display text-lg font-semibold">Judging Criteria</h2>
+          <span className="font-display text-sm font-semibold tabular-nums text-primary">{RUBRIC_TOTAL} pts total</span>
+        </div>
+        <div className="border border-border rounded-xl overflow-hidden">
+          <ul className="divide-y divide-border">
+            {RUBRIC.map((criterion) => (
+              <li key={criterion.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                <span>{criterion.label}</span>
+                <span className="text-muted tabular-nums">{criterion.max} pt{criterion.max > 1 ? 's' : ''}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="text-xs text-muted mt-3">This is a reference panel for judges. Scores are still entered on each project review page.</p>
+      </div>
+
       <div className="bg-card border border-border rounded-xl divide-y divide-border">
         {teams.map((t) => (
           <div key={t.id} className="flex items-center justify-between gap-4 px-5 py-4">
-            <div className="min-w-0">
-              <p className="font-display text-sm font-medium truncate">{t.name}</p>
-              <p className="text-xs text-muted truncate">{t.oneLiner}</p>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {t.image && (
+                <img
+                  src={t.image}
+                  alt={`${t.name} preview`}
+                  className="h-12 w-12 rounded-md object-cover border border-border"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="font-display text-sm font-medium truncate">{t.name}</p>
+                <p className="text-xs text-muted truncate">{t.oneLiner}</p>
+              </div>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <StatusPill tone={t.status === 'submitted' ? 'success' : t.status === 'in-progress' ? 'warning' : 'neutral'}>

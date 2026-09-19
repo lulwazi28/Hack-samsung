@@ -106,6 +106,12 @@ export default function ScoreTeam() {
         Back to Dashboard
       </Link>
 
+      {team.image && (
+        <div className="mb-5 overflow-hidden rounded-xl border border-border bg-app">
+          <img src={team.image} alt={`${team.name} project preview`} className="h-52 w-full object-cover" />
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-4 mb-1">
         <h1 className="font-display text-2xl font-semibold">{team.name}</h1>
         {locked && <StatusPill tone="success">Locked</StatusPill>}
